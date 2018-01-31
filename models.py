@@ -62,7 +62,7 @@ class DAE(nn.Module):
             nn.ConvTranspose2d(32, 32, kernel_size=4, stride=1),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 1, kernel_size=4, stride=1),
-            nn.ReLU())
+	    nn.Sigmoid())
 
     def forward(self, x):
         x = torch.add(x, Variable(self.noise_scale*torch.randn(self.batch_size, 1, self.image_dim, self.image_dim)))
@@ -112,8 +112,7 @@ def train_dae(num_epochs = 100, batch_size = 128, learning_rate = 1e-3):
             if (i + 1) % 1 == 0:
                 print('Epoch [%d/%d], Iter [%d/%d] Loss: %.4f'
                       % (epoch + 1, num_epochs, i + 1, len(train_dataset) // batch_size, loss.data[0]))
-
-        torch.save(dae.state_dict(), 'dae-test-model.pkl')
+                torch.save(dae.state_dict(), 'dae-test-model.pkl')
 
 
 class BetaVAE(nn.Module):
@@ -145,7 +144,7 @@ class BetaVAE(nn.Module):
             nn.ConvTranspose2d(32, 32, kernel_size=4, stride=1),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 1, kernel_size=4, stride=1),
-            nn.ReLU())
+            nn.Sigmoid())
 
     def forward(self, x):
         z = self.encoder(x)
@@ -208,18 +207,5 @@ def train_bvae(num_epochs = 100, batch_size = 128, learning_rate = 1e-4):
         torch.save(bvae.state_dict(), 'bvae-test-model.pkl')
 
 if __name__ == '__main__':
-    #train_dae()
-    #train_bvae()
-    #dae = DAE()
-    #dae.load_state_dict(torch.load('dae-test-model.pkl'))
-    #x = Variable(torch.randn(1, 1, 28, 28))
-    #bvae = BetaVAE()
-    #m,s,x_hat = bvae(x)
-
-    #print(m.size())
-    #z = dae.encode(x)
-    #print(z.size())
-    #print(x_hat.size())
-    #dae = DAE()
-    #x = Variable(torch.randn(1,1,28,28))
-    #z, x_hat = dae(x)
+    train_dae() #first need to dave a DAE model trained
+    train_bvae()
