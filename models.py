@@ -32,6 +32,7 @@ from torch.autograd import Variable
 from utils import *
 from torch.nn import functional as F
 
+cuda = False
 
 class DAE(nn.Module):
     def __init__(self):
@@ -66,7 +67,11 @@ class DAE(nn.Module):
 
     def forward(self, x):
         n = x.size()[0]
-        noise =  Variable(self.noise_scale*torch.randn(n, 1, self.image_dim, self.image_dim)).cuda()
+        if cuda:
+            noise =  Variable(self.noise_scale*torch.randn(n, 1, self.image_dim, self.image_dim)).cuda()
+        else:
+            noise = Variable(self.noise_scale * torch.randn(n, 1, self.image_dim, self.image_dim))
+
         x = torch.add(x, noise)
         z = self.encoder(x)
         z = z.view(-1, 32*4*4)
@@ -95,7 +100,9 @@ def train_dae(num_epochs = 100, batch_size = 128, learning_rate = 1e-3):
                        transform=transforms.ToTensor()), batch_size=batch_size, shuffle=True)
 
     dae = DAE()
-    dae.cuda()
+    if cuda:
+        dae.cuda()
+
     dae.batch_size = batch_size
 
     criterion = nn.MSELoss()
@@ -103,7 +110,10 @@ def train_dae(num_epochs = 100, batch_size = 128, learning_rate = 1e-3):
 
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(train_loader):
-            x = Variable(images).cuda()
+            if cuda:
+                x = Variable(images).cuda()
+            else:
+                x = Variable(images)
 
             # Forward + Backward + Optimize
             optimizer.zero_grad()
@@ -183,11 +193,16 @@ def train_bvae(num_epochs = 100, batch_size = 128, learning_rate = 1e-4):
                        transform=transforms.ToTensor()), batch_size=batch_size, shuffle=True)
 
     bvae = BetaVAE()
-    bvae.cuda()
+    if cuda:
+        bvae.cuda()
+
     bvae.batch_size = batch_size
 
     dae = DAE()
-    dae.cuda()
+
+    if cuda:
+        dae.cuda()
+
     dae.load_state_dict(torch.load('dae-test-model.pkl'))
     dae.batch_size = batch_size
     dae.eval()
@@ -196,7 +211,10 @@ def train_bvae(num_epochs = 100, batch_size = 128, learning_rate = 1e-4):
 
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(train_loader):
-            x = Variable(images).cuda()
+            if cuda:
+                x = Variable(images).cuda()
+            else:
+                x = Variable(images)
 
             # Forward + Backward + Optimize
             optimizer.zero_grad()
