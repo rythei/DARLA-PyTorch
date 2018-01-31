@@ -40,7 +40,7 @@ class DAE(nn.Module):
         self.image_dim = 28 # a 28x28 image corresponds to 4 on the FC layer, a 64x64 image corresponds to 13
                             # can calculate this using output_after_conv() in utils.py
         self.latent_dim = 100
-        self.noise_scale = 0.001
+        self.noise_scale = 0
         self.batch_size = 50
 
         self.encoder = nn.Sequential(
@@ -65,7 +65,9 @@ class DAE(nn.Module):
 	    nn.Sigmoid())
 
     def forward(self, x):
-        x = torch.add(x, Variable(self.noise_scale*torch.randn(self.batch_size, 1, self.image_dim, self.image_dim)))
+        n = x.size()[0]
+        noise =  Variable(self.noise_scale*torch.randn(n, 1, self.image_dim, self.image_dim)).cuda()
+        x = torch.add(x, noise)
         z = self.encoder(x)
         z = z.view(-1, 32*4*4)
         z = self.fc1(z)
@@ -93,6 +95,7 @@ def train_dae(num_epochs = 100, batch_size = 128, learning_rate = 1e-3):
                        transform=transforms.ToTensor()), batch_size=batch_size, shuffle=True)
 
     dae = DAE()
+    dae.cuda()
     dae.batch_size = batch_size
 
     criterion = nn.MSELoss()
@@ -100,7 +103,7 @@ def train_dae(num_epochs = 100, batch_size = 128, learning_rate = 1e-3):
 
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(train_loader):
-            x = Variable(images)
+            x = Variable(images).cuda()
 
             # Forward + Backward + Optimize
             optimizer.zero_grad()
@@ -147,11 +150,12 @@ class BetaVAE(nn.Module):
             nn.Sigmoid())
 
     def forward(self, x):
+        n = x.size()[0]
         z = self.encoder(x)
         z = z.view(-1, 32*4*4)
         mu_z = self.fc_mu(z)
         log_sigma_z = self.fc_sigma(z)
-        sample_z = mu_z + log_sigma_z.exp()*Variable(torch.randn(self.batch_size, self.latent_dim))
+        sample_z = mu_z + log_sigma_z.exp()*Variable(torch.randn(n, self.latent_dim)).cuda()
         x_hat = self.fc_up(sample_z)
         x_hat = x_hat.view(-1, 32, 4, 4)
         x_hat = self.decoder(x_hat)
@@ -179,9 +183,11 @@ def train_bvae(num_epochs = 100, batch_size = 128, learning_rate = 1e-4):
                        transform=transforms.ToTensor()), batch_size=batch_size, shuffle=True)
 
     bvae = BetaVAE()
+    bvae.cuda()
     bvae.batch_size = batch_size
 
     dae = DAE()
+    dae.cuda()
     dae.load_state_dict(torch.load('dae-test-model.pkl'))
     dae.batch_size = batch_size
     dae.eval()
@@ -190,7 +196,7 @@ def train_bvae(num_epochs = 100, batch_size = 128, learning_rate = 1e-4):
 
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(train_loader):
-            x = Variable(images)
+            x = Variable(images).cuda()
 
             # Forward + Backward + Optimize
             optimizer.zero_grad()
